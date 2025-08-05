@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.eu.org/envloader"
-	"telemetry.ex.gosuda.org/telemetry/internal/core/server"
+	"telemetry.ex.gosuda.org/telemetry/internal/server"
 )
 
 var pid = os.Getpid()
