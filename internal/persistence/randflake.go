@@ -80,7 +80,7 @@ func (g *PersistenceClient) RandflakeLeaseExtend(ctx context.Context, prev *type
 	now := time.Now().UnixNano()
 	expiresAt := now + _RANDFLAKE_LEASE_TTL
 
-	if prev.ExpiresAt-_RANDFLAKE_SAFE_WINDOW < expiresAt {
+	if prev.ExpiresAt-_RANDFLAKE_SAFE_WINDOW < now {
 		return nil, ErrUnsafeRandflakeLease
 	}
 

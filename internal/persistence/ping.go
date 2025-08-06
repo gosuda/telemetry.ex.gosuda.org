@@ -13,11 +13,6 @@ var (
 )
 
 func (g *PersistenceClient) Ping(ctx context.Context) error {
-	err := g.pool.PingContext(ctx)
-	if err != nil {
-		return err
-	}
-
 	tx, err := g.pool.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
 	})

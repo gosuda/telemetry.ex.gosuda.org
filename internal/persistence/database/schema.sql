@@ -5,7 +5,7 @@ CREATE TABLE views
     client_id BIGINT NOT NULL,
 
     created_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX views_url_id_idx ON views(url_id);
 
@@ -16,7 +16,7 @@ CREATE TABLE view_counts
     count BIGINT NOT NULL,
 
     updated_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX view_counts_url_id_idx ON view_counts(url_id);
 
@@ -27,7 +27,7 @@ CREATE TABLE likes
     client_id BIGINT NOT NULL,
 
     created_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX likes_url_id_idx ON likes(url_id);
 
@@ -38,7 +38,7 @@ CREATE TABLE like_counts
     count BIGINT NOT NULL,
 
     updated_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX like_counts_url_id_idx ON like_counts(url_id);
 
@@ -48,7 +48,7 @@ CREATE TABLE client_identifiers
     ident TEXT NOT NULL,
 
     created_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX client_identifiers_ident_idx ON client_identifiers(ident);
 
@@ -64,7 +64,7 @@ CREATE TABLE client_fingerprints
     fphash TEXT NOT NULL,
 
     created_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX client_fingerprints_client_id_idx ON client_fingerprints(client_id);
 CREATE INDEX client_fingerprints_fphash_idx ON client_fingerprints(fphash);
@@ -75,7 +75,7 @@ CREATE TABLE urls
     url TEXT NOT NULL,
 
     created_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE INDEX urls_id_idx ON urls(id);
 
@@ -85,7 +85,7 @@ CREATE TABLE randflake_leases
     node_id BIGINT NOT NULL,
     created_at BIGINT NOT NULL,
     expires_at BIGINT NOT NULL
-);
+) ENGINE = InnoDB;
 
 CREATE UNIQUE INDEX randflake_leases_node_id_idx ON randflake_leases(node_id);
 CREATE INDEX randflake_leases_expires_at_idx ON randflake_leases(expires_at ASC);
