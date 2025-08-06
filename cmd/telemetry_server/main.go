@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.eu.org/envloader"
+	"telemetry.ex.gosuda.org/telemetry/internal/persistence"
 	"telemetry.ex.gosuda.org/telemetry/internal/server"
 )
 
@@ -37,20 +39,50 @@ func init() {
 
 func main() {
 	envloader.LoadEnvFile(".env")
+	configProvider := func(name string) (string, error) {
+		if value, ok := os.LookupEnv(name); ok {
+			return value, nil
+		}
+		return "", fmt.Errorf("environment variable %s not found", name)
+	}
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("Failed to listen on port")
 	}
 	defer ln.Close()
 	fmt.Println("{\"port\":", ln.Addr().(*net.TCPAddr).Port, "}")
 
 	log.Info().Msgf("Server starting on port %d", ln.Addr().(*net.TCPAddr).Port)
 
-	server := server.NewServer()
+	dbconfig := &persistence.PersistenceClientConfig{
+		DSN:             "root@localhost/database",
+		ConnMaxIdleTime: time.Minute * 4,
+		ConnMaxLifetime: 0,
+		MaxIdleConns:    5,
+		MaxOpenConns:    0,
+	}
+	err = envloader.BindStruct(dbconfig, configProvider)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to bind database config")
+	}
+
+	ps, err := persistence.NewPersistenceClient(context.Background(), dbconfig)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create persistence client")
+	}
+
+	server, err := server.NewServer(
+		&server.ServerConfig{
+			PersistenceService: ps,
+		},
+	)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create server")
+	}
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)

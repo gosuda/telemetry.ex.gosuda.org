@@ -11,11 +11,11 @@ import (
 )
 
 type PersistenceClientConfig struct {
-	DSN             string
-	ConnMaxIdleTime time.Duration
-	ConnMaxLifetime time.Duration
-	MaxIdleConns    int
-	MaxOpenConns    int
+	DSN             string        `env:"DATABASE_DSN"`
+	ConnMaxIdleTime time.Duration `env:"DATABASE_CONN_MAX_IDLE_TIME"`
+	ConnMaxLifetime time.Duration `env:"DATABASE_CONN_MAX_LIFETIME"`
+	MaxIdleConns    int           `env:"DATABASE_MAX_IDLE_CONNS"`
+	MaxOpenConns    int           `env:"DATABASE_MAX_OPEN_CONNS"`
 }
 
 type PersistenceClient struct {

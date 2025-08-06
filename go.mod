@@ -8,6 +8,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/zerolog v1.34.0
 	gopkg.eu.org/envloader v1.1.0
+	gosuda.org/randflake v1.6.2
 )
 
 require (

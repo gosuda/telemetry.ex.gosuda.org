@@ -16,9 +16,8 @@ const (
 	_RANDFLAKE_NODE_BITS = 17
 	_RANDFLAKE_MAX_NODE  = (1 << _RANDFLAKE_NODE_BITS) - 1
 
-	_RANDFLAKE_LEASE_TTL    = int64(time.Minute * 10)
-	_RANDFLAKE_RENEW_WINDOW = int64(time.Minute * 5)
-	_RANDFLAKE_SAFE_WINDOW  = int64(time.Second * 30)
+	_RANDFLAKE_LEASE_TTL   = int64(time.Minute * 10)
+	_RANDFLAKE_SAFE_WINDOW = int64(time.Second * 30)
 )
 
 var (
