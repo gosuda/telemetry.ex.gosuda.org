@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/sha256"
 	"net"
 	"net/http"
 	"time"
@@ -45,7 +46,7 @@ func (g *serverServiceProvider) GenerateIDString() (string, error) {
 
 type ServerConfig struct {
 	PersistenceService types.PersistenceService
-	RandflakeSecret    []byte
+	RandflakeSecret    string `env:"RANDFLAKE_SECRET,required"`
 }
 
 // NewServer creates a new server instance
@@ -75,11 +76,12 @@ func NewServer(c *ServerConfig) (*Server, error) {
 	g.lease = lease
 	log.Debug().Int64("expires_at", g.lease.ExpiresAt).Int64("nodeid", g.lease.NodeID).Msg("randflake lease created")
 
+	randflakeSecretKey := sha256.Sum256([]byte(c.RandflakeSecret))
 	rf, err := randflake.NewGenerator(
 		lease.NodeID,
 		lease.CreatedAt/int64(time.Second),
 		(lease.ExpiresAt-_RANDFLAKE_SAFE_WINDOW)/int64(time.Second),
-		c.RandflakeSecret,
+		randflakeSecretKey[:16],
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create randflake generator")

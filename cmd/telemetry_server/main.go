@@ -75,10 +75,16 @@ func main() {
 		log.Fatal().Err(err).Msg("Failed to create persistence client")
 	}
 
+	srvConfig := &server.ServerConfig{
+		PersistenceService: ps,
+	}
+	err = envloader.BindStruct(srvConfig, configProvider)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to bind server config")
+	}
+
 	server, err := server.NewServer(
-		&server.ServerConfig{
-			PersistenceService: ps,
-		},
+		srvConfig,
 	)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to create server")
