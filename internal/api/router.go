@@ -7,5 +7,13 @@ import (
 
 // RegisterRoutes registers all API routes with the server and returns the server
 func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
+	// index
+	s.Handle("GET", "/", IndexHandler(is))
+
+	// z-routes
 	s.Handle("GET", "/healthz", HealthzHandler(is))
+	s.Handle("GET", "/idz", IDZHandler(is))
+
+	// telemetry routes
+
 }

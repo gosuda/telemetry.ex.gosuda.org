@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -17,6 +18,10 @@ import (
 const (
 	_RANDFLAKE_RENEW_WINDOW = int64(time.Minute * 8)
 	_RANDFLAKE_SAFE_WINDOW  = int64(time.Second * 30)
+)
+
+var (
+	ErrRandflakeLeaseCreate = errors.New("server: failed to create randflake lease")
 )
 
 type Server struct {
@@ -68,19 +73,28 @@ func NewServer(c *ServerConfig) (*Server, error) {
 	log.Debug().Msg("persistence service ping successful")
 
 	log.Debug().Msg("creating initial randflake lease")
-	lease, err := g.ps.RandflakeLeaseCreate(ctx)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create randflake lease")
-		return nil, err
+	retry := 0
+	for retry < 3 {
+		lease, err := g.ps.RandflakeLeaseCreate(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create randflake lease")
+			retry++
+			continue
+		}
+		g.lease = lease
+		break
 	}
-	g.lease = lease
+	if g.lease == nil {
+		log.Error().Msg("failed to create randflake lease")
+		return nil, ErrRandflakeLeaseCreate
+	}
 	log.Debug().Int64("expires_at", g.lease.ExpiresAt).Int64("nodeid", g.lease.NodeID).Msg("randflake lease created")
 
 	randflakeSecretKey := sha256.Sum256([]byte(c.RandflakeSecret))
 	rf, err := randflake.NewGenerator(
-		lease.NodeID,
-		lease.CreatedAt/int64(time.Second),
-		(lease.ExpiresAt-_RANDFLAKE_SAFE_WINDOW)/int64(time.Second),
+		g.lease.NodeID,
+		g.lease.CreatedAt/int64(time.Second),
+		(g.lease.ExpiresAt-_RANDFLAKE_SAFE_WINDOW)/int64(time.Second),
 		randflakeSecretKey[:16],
 	)
 	if err != nil {
