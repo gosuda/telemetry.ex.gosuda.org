@@ -22,31 +22,42 @@ type ClientIdentifier struct {
 }
 
 type Like struct {
-	ID     int64 `json:"id"`
-	TsNano int64 `json:"ts_nano"`
-	UrlID  int64 `json:"url_id"`
+	ID        int64 `json:"id"`
+	UrlID     int64 `json:"url_id"`
+	ClientID  int64 `json:"client_id"`
+	CreatedAt int64 `json:"created_at"`
 }
 
 type LikeCount struct {
-	ID    int64 `json:"id"`
-	UrlID int64 `json:"url_id"`
-	Count int64 `json:"count"`
+	ID        int64 `json:"id"`
+	UrlID     int64 `json:"url_id"`
+	Count     int64 `json:"count"`
+	UpdatedAt int64 `json:"updated_at"`
+}
+
+type RandflakeLease struct {
+	Uuid      []byte `json:"uuid"`
+	NodeID    int64  `json:"node_id"`
+	CreatedAt int64  `json:"created_at"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 type Url struct {
-	ID     int64  `json:"id"`
-	Url    string `json:"url"`
-	TsNano int64  `json:"ts_nano"`
+	ID        int64  `json:"id"`
+	Url       string `json:"url"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 type View struct {
-	ID     int64 `json:"id"`
-	TsNano int64 `json:"ts_nano"`
-	UrlID  int64 `json:"url_id"`
+	ID        int64 `json:"id"`
+	UrlID     int64 `json:"url_id"`
+	ClientID  int64 `json:"client_id"`
+	CreatedAt int64 `json:"created_at"`
 }
 
 type ViewCount struct {
-	ID    int64 `json:"id"`
-	UrlID int64 `json:"url_id"`
-	Count int64 `json:"count"`
+	ID        int64 `json:"id"`
+	UrlID     int64 `json:"url_id"`
+	Count     int64 `json:"count"`
+	UpdatedAt int64 `json:"updated_at"`
 }

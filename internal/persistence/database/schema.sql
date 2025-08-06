@@ -78,3 +78,14 @@ CREATE TABLE urls
 );
 
 CREATE INDEX urls_id_idx ON urls(id);
+
+CREATE TABLE randflake_leases
+(
+    uuid BINARY(16) PRIMARY KEY,
+    node_id BIGINT NOT NULL,
+    created_at BIGINT NOT NULL,
+    expires_at BIGINT NOT NULL
+);
+
+CREATE UNIQUE INDEX randflake_leases_node_id_idx ON randflake_leases(node_id);
+CREATE INDEX randflake_leases_expires_at_idx ON randflake_leases(expires_at ASC);
