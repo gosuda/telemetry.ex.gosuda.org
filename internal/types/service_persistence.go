@@ -24,4 +24,8 @@ type PersistenceService interface {
 	// View-related methods
 	ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error
 	ViewCountLookup(ctx context.Context, urlID int64) (ViewCount, error)
+
+	// Like-related methods (mirrors view implementation; likes are read-heavy so no combined write+get helper on client)
+	LikeInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error
+	LikeCountLookup(ctx context.Context, urlID int64) (LikeCount, error)
 }

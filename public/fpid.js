@@ -346,6 +346,79 @@ async function recordViewAndGetCount(url = window.location.href, returnCount = t
 }
 
 /**
+ * Records a "like" for the current URL
+ * @param {string} url - The URL to record a like for (defaults to current page URL)
+ * @returns {Promise<boolean>} - Returns true if like was recorded successfully
+ */
+async function recordLike(url = window.location.href) {
+    let clientID = localStorage.getItem("telemetry_client_id");
+    let clientToken = localStorage.getItem("telemetry_client_token");
+
+    if (!clientID || !clientToken) {
+        console.warn("Client not registered. Cannot record like.");
+        return false;
+    }
+
+    try {
+        const resp = await fetch(TELEMETRY_BASEURL + "/client/like", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                client_id: clientID,
+                client_token: clientToken,
+                url: url,
+            }),
+        });
+
+        if (resp.status === 200) {
+            console.log("Like recorded successfully for:", url);
+            return true;
+        } else {
+            console.error("Failed to record like. Status:", resp.status);
+            return false;
+        }
+    } catch (error) {
+        console.error("Error recording like:", error);
+        return false;
+    }
+}
+
+/**
+ * Gets the like count for a specific URL
+ * @param {string} url - The URL to get like count for (defaults to current page URL)
+ * @returns {Promise<Object|null>} - Returns like count data or null if failed
+ */
+async function getLikeCount(url = window.location.href) {
+    try {
+        const resp = await fetch(TELEMETRY_BASEURL + "/like/count?" + new URLSearchParams({
+            url: url
+        }), {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (resp.status === 200) {
+            const data = await resp.json();
+            console.log("Like count for", url + ":", data.count);
+            return data;
+        } else if (resp.status === 404) {
+            console.log("URL not found, like count is 0 for:", url);
+            return { url: url, count: 0 };
+        } else {
+            console.error("Failed to get like count. Status:", resp.status);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error getting like count:", error);
+        return null;
+    }
+}
+
+/**
  * Main telemetry function to ensure client registration, fingerprint check-in, and page view recording.
  * Handles initial client registration if needed and updates fingerprint if changed.
  */
@@ -410,3 +483,5 @@ initTelemetry();
 window.recordView = recordView;
 window.getViewCount = getViewCount;
 window.recordViewAndGetCount = recordViewAndGetCount;
+window.recordLike = recordLike;
+window.getLikeCount = getLikeCount;

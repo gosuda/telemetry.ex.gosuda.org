@@ -117,3 +117,53 @@ func (g *PersistenceClient) UrlInsert(ctx context.Context, id int64, url string)
 func (g *PersistenceClient) ViewCountLookup(ctx context.Context, urlID int64) (types.ViewCount, error) {
 	return g.db.ViewCountLookup(ctx, urlID)
 }
+
+func (g *PersistenceClient) LikeInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error {
+	// Start a transaction
+	tx, err := g.pool.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Create a new queries instance using the transaction
+	txQueries := database.New(tx)
+	now := time.Now().UnixNano()
+
+	// Insert the like
+	err = txQueries.LikeInsert(ctx, database.LikeInsertParams{
+		ID:        id,
+		UrlID:     urlID,
+		ClientID:  clientID,
+		CreatedAt: now,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Try to update the like count, if it doesn't exist, insert a new one
+	err = txQueries.LikeCountUpdate(ctx, database.LikeCountUpdateParams{
+		UpdatedAt: now,
+		UrlID:     urlID,
+	})
+	if err != nil {
+		// If update failed, try to insert a new like count
+		err = txQueries.LikeCountInsert(ctx, database.LikeCountInsertParams{
+			ID:        countID,
+			UrlID:     urlID,
+			UpdatedAt: now,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Commit the transaction
+	return tx.Commit()
+}
+
+func (g *PersistenceClient) LikeCountLookup(ctx context.Context, urlID int64) (types.LikeCount, error) {
+	return g.db.LikeCountLookup(ctx, urlID)
+}
