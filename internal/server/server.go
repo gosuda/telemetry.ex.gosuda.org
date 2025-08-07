@@ -168,8 +168,19 @@ func (g *Server) randflakeWorker() {
 	}
 }
 
+type CORSServer struct {
+	http.Handler
+}
+
+func (s *CORSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "https://gosuda.org")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	s.Handler.ServeHTTP(w, r)
+}
+
 func (g *Server) Serve(ln net.Listener) error {
-	return http.Serve(ln, g.mux)
+	return http.Serve(ln, &CORSServer{Handler: g.mux})
 }
 
 func (g *Server) Shutdown() {

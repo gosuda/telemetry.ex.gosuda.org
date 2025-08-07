@@ -158,7 +158,7 @@ const TELEMETRY_BASEURL = "https://telemetry.ex.gosuda.org";
 const CLIENT_VERSION = "20250807-V1ALPHA1";
 //@@END_CONFIG@@
 
-async function statusClient() {
+async function checkClientStatus() {
     // check if client is registered
     let clientID = localStorage.getItem("telemetry_client_id");
     let clientToken = localStorage.getItem("telemetry_client_token");
@@ -173,20 +173,16 @@ async function statusClient() {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            client_id: clientID,
-            client_token: clientToken,
+            id: clientID,
+            token: clientToken,
         }),
     });
-    if (resp.status !== 200) {
-        console.error("Failed to check client status");
-        return false;
+
+    if (resp.status == 200) {
+        return true;
     }
 
-    if (await resp.json()["status"] !== "ok") {
-        return false;
-    }
-
-    return true
+    return false;
 }
 
 async function registerClient() {
@@ -202,13 +198,16 @@ async function registerClient() {
     }
 
     const clientIdentity = await resp.json();
-    localStorage.setItem("telemetry_client_id", clientIdentity.client_id);
-    localStorage.setItem("telemetry_client_token", clientIdentity.client_token);
+    localStorage.setItem("telemetry_client_id", clientIdentity.id);
+    localStorage.setItem("telemetry_client_token", clientIdentity.token);
 
     return clientIdentity;
 }
 
 async function registerFingerprint(fingerprint) {
+    let clientID = localStorage.getItem("telemetry_client_id");
+    let clientToken = localStorage.getItem("telemetry_client_token");
+
     // register fingerprint
     const resp = await fetch(TELEMETRY_BASEURL + "/client/checkin", {
         method: "POST",
@@ -234,10 +233,10 @@ async function telemetry() {
     // check if client is registered
     let clientFingerprint = localStorage.getItem("telemetry_client_fingerprint");
 
-    if (!await statusClient()) {
+    if (!await checkClientStatus()) {
         await registerClient();
 
-        const ok = await statusClient();
+        const ok = await checkClientStatus();
         if (!ok) {
             throw new Error("Failed to register client");
         }

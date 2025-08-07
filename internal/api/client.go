@@ -62,7 +62,7 @@ func ClientStatusHandler(is types.InternalServiceProvider) httprouter.Handle {
 		w.Header().Set("Content-Type", "application/json")
 		defer r.Body.Close()
 
-		clientIdentity := ClientPassport{}
+		clientIdentity := ClientIdentity{}
 		err := json.NewDecoder(r.Body).Decode(&clientIdentity)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to decode client passport")
@@ -71,21 +71,21 @@ func ClientStatusHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 
 		log.Debug().
-			Str("client_id", clientIdentity.ClientID).
-			Str("client_token", clientIdentity.ClientToken).
+			Str("client_id", clientIdentity.ID).
+			Str("client_token", clientIdentity.Token).
 			Msg("Client Status Request Received")
 
-		clientID, err := randflake.DecodeString(clientIdentity.ClientID)
+		clientID, err := randflake.DecodeString(clientIdentity.ID)
 		if err != nil {
 			log.Debug().
-				Str("client_id", clientIdentity.ClientID).
+				Str("client_id", clientIdentity.ID).
 				Err(err).
 				Msg("Failed to decode client ID")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		ok, err := is.ClientVerifyToken(context.Background(), clientID, clientIdentity.ClientToken)
+		ok, err := is.ClientVerifyToken(context.Background(), clientID, clientIdentity.Token)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to verify client token")
 		}
