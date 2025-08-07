@@ -151,3 +151,103 @@ const FPID = (() => {
     };
 
 })();
+
+//@@START_CONFIG@@
+const TELEMETRY_FP_VERSION = 1;
+const TELEMETRY_BASEURL = "https://telemetry.ex.gosuda.org";
+const CLIENT_VERSION = "20250807-V1ALPHA1";
+//@@END_CONFIG@@
+
+async function statusClient() {
+    // check if client is registered
+    let clientID = localStorage.getItem("telemetry_client_id");
+    let clientToken = localStorage.getItem("telemetry_client_token");
+
+    if (!clientID || !clientToken) {
+        return false
+    }
+
+    const resp = await fetch(TELEMETRY_BASEURL + "/client/status", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            client_id: clientID,
+            client_token: clientToken,
+        }),
+    });
+    if (resp.status !== 200) {
+        console.error("Failed to check client status");
+        return false;
+    }
+
+    if (await resp.json()["status"] !== "ok") {
+        return false;
+    }
+
+    return true
+}
+
+async function registerClient() {
+    // register client
+    const resp = await fetch(TELEMETRY_BASEURL + "/client/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    });
+    if (resp.status !== 201) {
+        throw new Error("Failed to register client");
+    }
+
+    const clientIdentity = await resp.json();
+    localStorage.setItem("telemetry_client_id", clientIdentity.client_id);
+    localStorage.setItem("telemetry_client_token", clientIdentity.client_token);
+
+    return clientIdentity;
+}
+
+async function registerFingerprint(fingerprint) {
+    // register fingerprint
+    const resp = await fetch(TELEMETRY_BASEURL + "/client/checkin", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            client_id: clientID,
+            client_token: clientToken,
+            version: CLIENT_VERSION,
+            fpv: TELEMETRY_FP_VERSION,
+            fp: fingerprint,
+            ua: navigator.userAgent,
+            uad: JSON.stringify(navigator.userAgentData),
+        }),
+    });
+    if (resp.status !== 200) {
+        throw new Error("Failed to register fingerprint");
+    }
+}
+
+async function telemetry() {
+    // check if client is registered
+    let clientFingerprint = localStorage.getItem("telemetry_client_fingerprint");
+
+    if (!await statusClient()) {
+        await registerClient();
+
+        const ok = await statusClient();
+        if (!ok) {
+            throw new Error("Failed to register client");
+        }
+    }
+
+    const fp = await FPID.generate();
+    console.log("fpid:", fp.finalHash);
+    if (fp.finalHash !== clientFingerprint) {
+        await registerFingerprint(fp.finalHash);
+    }
+}
+
+telemetry();

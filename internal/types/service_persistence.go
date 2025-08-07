@@ -15,4 +15,5 @@ type PersistenceService interface {
 	ClientLookupByID(ctx context.Context, clientID int64) (ClientIdentifier, error)
 	ClientLookupByToken(ctx context.Context, token string) (ClientIdentifier, error)
 	ClientVerifyToken(ctx context.Context, clientID int64, token string) (bool, error)
+	ClientRegister(ctx context.Context, id int64, token string) error
 }

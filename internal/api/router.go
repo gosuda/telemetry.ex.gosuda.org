@@ -15,5 +15,7 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	s.Handle("GET", "/idz", IDZHandler(is))
 
 	// telemetry routes
+	s.Handle("POST", "/client/status", ClientStatusHandler(is))
+	s.Handle("POST", "/client/register", ClientRegisterHandler(is))
 	s.Handle("POST", "/client/checkin", ClientCheckinHandler(is))
 }

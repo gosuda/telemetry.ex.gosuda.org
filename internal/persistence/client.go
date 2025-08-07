@@ -8,6 +8,14 @@ import (
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
 
+func (g *PersistenceClient) ClientRegister(ctx context.Context, id int64, token string) error {
+	return g.db.ClientRegister(ctx, database.ClientRegisterParams{
+		ID:        id,
+		Token:     token,
+		CreatedAt: time.Now().UnixNano(),
+	})
+}
+
 func (g *PersistenceClient) ClientLookupByID(ctx context.Context, id int64) (types.ClientIdentifier, error) {
 	return g.db.ClientLookupByID(ctx, id)
 }

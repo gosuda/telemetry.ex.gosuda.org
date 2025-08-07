@@ -1,3 +1,7 @@
+-- name: ClientRegister :exec
+INSERT INTO client_identifiers (id, token, created_at)
+VALUES (?, ?, ?);
+
 -- name: ClientLookupByID :one
 SELECT *
 FROM client_identifiers

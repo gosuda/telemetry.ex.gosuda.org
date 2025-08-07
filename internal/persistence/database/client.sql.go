@@ -35,6 +35,22 @@ func (q *Queries) ClientLookupByToken(ctx context.Context, token string) (Client
 	return i, err
 }
 
+const clientRegister = `-- name: ClientRegister :exec
+INSERT INTO client_identifiers (id, token, created_at)
+VALUES (?, ?, ?)
+`
+
+type ClientRegisterParams struct {
+	ID        int64  `json:"id"`
+	Token     string `json:"token"`
+	CreatedAt int64  `json:"created_at"`
+}
+
+func (q *Queries) ClientRegister(ctx context.Context, arg ClientRegisterParams) error {
+	_, err := q.db.ExecContext(ctx, clientRegister, arg.ID, arg.Token, arg.CreatedAt)
+	return err
+}
+
 const clientRegisterFingerprint = `-- name: ClientRegisterFingerprint :exec
 INSERT INTO client_fingerprints (id, client_id, user_agent, user_agent_data, fpversion, fphash, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)
