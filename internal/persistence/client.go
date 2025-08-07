@@ -56,7 +56,7 @@ func (g *PersistenceClient) ClientRegisterFingerprint(
 	})
 }
 
-func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64, createdAt int64) error {
+func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error {
 	// Start a transaction
 	tx, err := g.pool.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelSerializable,
@@ -68,13 +68,14 @@ func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, u
 
 	// Create a new queries instance using the transaction
 	txQueries := database.New(tx)
+	now := time.Now().UnixNano()
 
 	// Insert the view
 	err = txQueries.ViewInsert(ctx, database.ViewInsertParams{
 		ID:        id,
 		UrlID:     urlID,
 		ClientID:  clientID,
-		CreatedAt: createdAt,
+		CreatedAt: now,
 	})
 	if err != nil {
 		return err
@@ -82,7 +83,7 @@ func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, u
 
 	// Try to update the view count, if it doesn't exist, insert a new one
 	err = txQueries.ViewCountUpdate(ctx, database.ViewCountUpdateParams{
-		UpdatedAt: createdAt,
+		UpdatedAt: now,
 		UrlID:     urlID,
 	})
 	if err != nil {
@@ -90,7 +91,7 @@ func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, u
 		err = txQueries.ViewCountInsert(ctx, database.ViewCountInsertParams{
 			ID:        countID,
 			UrlID:     urlID,
-			UpdatedAt: createdAt,
+			UpdatedAt: now,
 		})
 		if err != nil {
 			return err
@@ -105,11 +106,11 @@ func (g *PersistenceClient) UrlLookupByUrl(ctx context.Context, url string) (typ
 	return g.db.UrlLookupByUrl(ctx, url)
 }
 
-func (g *PersistenceClient) UrlInsert(ctx context.Context, id int64, url string, createdAt int64) error {
+func (g *PersistenceClient) UrlInsert(ctx context.Context, id int64, url string) error {
 	return g.db.UrlInsert(ctx, database.UrlInsertParams{
 		ID:        id,
 		Url:       url,
-		CreatedAt: createdAt,
+		CreatedAt: time.Now().UnixNano(),
 	})
 }
 

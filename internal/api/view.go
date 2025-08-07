@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
@@ -92,8 +91,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 				return
 			}
 
-			createdAt := time.Now().UnixNano()
-			err = is.UrlInsert(context.Background(), urlID, viewRequest.URL, createdAt)
+			err = is.UrlInsert(context.Background(), urlID, viewRequest.URL)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to insert URL")
 				w.WriteHeader(http.StatusInternalServerError)
@@ -113,8 +111,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 
 		// Insert the view and update the count in a transaction
-		createdAt := time.Now().UnixNano()
-		err = is.ViewInsertWithCount(context.Background(), viewID, urlID, clientID, viewCountID, createdAt)
+		err = is.ViewInsertWithCount(context.Background(), viewID, urlID, clientID, viewCountID)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to insert view and update count")
 			w.WriteHeader(http.StatusInternalServerError)

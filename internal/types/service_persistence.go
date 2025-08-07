@@ -19,9 +19,9 @@ type PersistenceService interface {
 
 	// URL-related methods
 	UrlLookupByUrl(ctx context.Context, url string) (Url, error)
-	UrlInsert(ctx context.Context, id int64, url string, createdAt int64) error
+	UrlInsert(ctx context.Context, id int64, url string) error
 
 	// View-related methods
-	ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64, createdAt int64) error
+	ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error
 	ViewCountLookup(ctx context.Context, urlID int64) (ViewCount, error)
 }
