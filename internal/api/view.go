@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 	"gosuda.org/randflake"
+	"telemetry.ex.gosuda.org/telemetry/internal/core"
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
 
@@ -34,6 +36,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 		if err != nil {
 			log.Error().Err(err).Msg("failed to decode view request")
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid request body"}`))
 			return
 		}
 
@@ -43,6 +46,18 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 			Str("url", viewRequest.URL).
 			Msg("View Request Received")
 
+		// Normalize URL (host + pathname)
+		normalizedURL, err := core.NormalizeURL(viewRequest.URL)
+		if err != nil {
+			log.Debug().
+				Str("url", viewRequest.URL).
+				Err(err).
+				Msg("failed to normalize url")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid url"}`))
+			return
+		}
+
 		// Verify client credentials
 		clientID, err := randflake.DecodeString(viewRequest.ClientID)
 		if err != nil {
@@ -51,6 +66,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 				Err(err).
 				Msg("Failed to decode client ID")
 			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid client_id"}`))
 			return
 		}
 
@@ -67,7 +83,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 				Str("client_token", viewRequest.ClientToken).
 				Msg("Client token verification failed")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(ViewResponse{Status: "unauthorized"})
+			w.Write([]byte(`{"status":"unauthorized"}`))
 			return
 		}
 
@@ -81,7 +97,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		// Look up or create URL
 		var urlID int64
-		urlRecord, err := is.UrlLookupByUrl(context.Background(), viewRequest.URL)
+		urlRecord, err := is.UrlLookupByUrl(context.Background(), normalizedURL)
 		if err != nil {
 			// URL doesn't exist, create it
 			urlID, err = is.GenerateID()
@@ -91,7 +107,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 				return
 			}
 
-			err = is.UrlInsert(context.Background(), urlID, viewRequest.URL)
+			err = is.UrlInsert(context.Background(), urlID, normalizedURL)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to insert URL")
 				w.WriteHeader(http.StatusInternalServerError)
@@ -119,7 +135,7 @@ func ClientViewHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(ViewResponse{Status: "ok"})
+		w.Write([]byte(`{"status":"ok"}`))
 	}
 }
 
@@ -135,27 +151,38 @@ func ViewCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Get URL parameter
-		url := r.URL.Query().Get("url")
-		if url == "" {
+		rawURL := r.URL.Query().Get("url")
+		if rawURL == "" {
 			log.Debug().Msg("URL parameter is required")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "url parameter is required"})
+			w.Write([]byte(`{"error":"url parameter is required"}`))
+			return
+		}
+
+		normalizedURL, err := core.NormalizeURL(rawURL)
+		if err != nil {
+			log.Debug().
+				Str("url", rawURL).
+				Err(err).
+				Msg("failed to normalize url")
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"invalid url"}`))
 			return
 		}
 
 		log.Debug().
-			Str("url", url).
+			Str("url", normalizedURL).
 			Msg("View Count Request Received")
 
 		// Look up URL
-		urlRecord, err := is.UrlLookupByUrl(context.Background(), url)
+		urlRecord, err := is.UrlLookupByUrl(context.Background(), normalizedURL)
 		if err != nil {
 			log.Debug().
-				Str("url", url).
+				Str("url", normalizedURL).
 				Err(err).
 				Msg("URL not found")
 			w.WriteHeader(http.StatusNotFound)
-			json.NewEncoder(w).Encode(map[string]string{"error": "URL not found"})
+			w.Write([]byte(`{"error":"URL not found"}`))
 			return
 		}
 
@@ -163,22 +190,16 @@ func ViewCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 		viewCount, err := is.ViewCountLookup(context.Background(), urlRecord.ID)
 		if err != nil {
 			log.Debug().
-				Str("url", url).
+				Str("url", normalizedURL).
 				Int64("url_id", urlRecord.ID).
 				Err(err).
 				Msg("View count not found")
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(ViewCountResponse{
-				URL:   url,
-				Count: 0,
-			})
+			w.Write([]byte(fmt.Sprintf(`{"url":"%s","count":0}`, normalizedURL)))
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(ViewCountResponse{
-			URL:   url,
-			Count: viewCount.Count,
-		})
+		w.Write([]byte(fmt.Sprintf(`{"url":"%s","count":%d}`, normalizedURL, viewCount.Count)))
 	}
 }

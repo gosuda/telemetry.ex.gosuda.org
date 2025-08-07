@@ -25,5 +25,7 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	s.Handle("GET", "/view/count", ViewCountHandler(is))
 	s.Handle("GET", "/like/count", LikeCountHandler(is))
 
-	s.GlobalOPTIONS = CORSHandler()
+	// Use the CORS middleware for global OPTIONS handling. The middleware will
+	// handle preflight requests even when next is nil.
+	s.GlobalOPTIONS = CORS(nil)
 }

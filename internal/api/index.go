@@ -21,6 +21,15 @@ var _index_html = []byte(
 	<ul>
 		<li>GET <a href="/healthz">/healthz</a> - Check the health of the service</li>
 		<li>GET <a href="/idz">/idz</a> - Generate a new randflake ID</li>
+		<li>POST <code>/client/like</code> - Submit a like (JSON: client_id, client_token, url)</li>
+		<li>GET <code>/like/count?url=<url></code> - Get like count for a normalized URL (host + pathname)</li>
+		<li>POST <code>/client/view</code> - Submit a view (JSON: client_id, client_token, url)</li>
+		<li>GET <code>/view/count?url=<url></code> - Get view count for a normalized URL (host + pathname)</li>
+	</ul>
+	<p>Notes:</p>
+	<ul>
+		<li>URLs are normalized to host + pathname before storage and queries.</li>
+		<li>CORS: all origins are allowed.</li>
 	</ul>
 </body>
 </html>`,

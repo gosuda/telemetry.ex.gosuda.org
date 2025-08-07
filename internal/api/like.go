@@ -8,6 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 	"gosuda.org/randflake"
+	"telemetry.ex.gosuda.org/telemetry/internal/core"
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
 
@@ -42,6 +43,18 @@ func ClientLikeHandler(is types.InternalServiceProvider) httprouter.Handle {
 			Str("client_token", likeRequest.ClientToken).
 			Str("url", likeRequest.URL).
 			Msg("Like Request Received")
+
+		// Normalize URL (host + pathname)
+		normalizedURL, err := core.NormalizeURL(likeRequest.URL)
+		if err != nil {
+			log.Debug().
+				Str("url", likeRequest.URL).
+				Err(err).
+				Msg("failed to normalize url")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid url"})
+			return
+		}
 
 		// Verify client credentials
 		clientID, err := randflake.DecodeString(likeRequest.ClientID)
@@ -81,7 +94,7 @@ func ClientLikeHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		// Look up or create URL
 		var urlID int64
-		urlRecord, err := is.UrlLookupByUrl(context.Background(), likeRequest.URL)
+		urlRecord, err := is.UrlLookupByUrl(context.Background(), normalizedURL)
 		if err != nil {
 			// URL doesn't exist, create it
 			urlID, err = is.GenerateID()
@@ -91,7 +104,7 @@ func ClientLikeHandler(is types.InternalServiceProvider) httprouter.Handle {
 				return
 			}
 
-			err = is.UrlInsert(context.Background(), urlID, likeRequest.URL)
+			err = is.UrlInsert(context.Background(), urlID, normalizedURL)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to insert URL")
 				w.WriteHeader(http.StatusInternalServerError)
@@ -135,23 +148,34 @@ func LikeCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Get URL parameter
-		url := r.URL.Query().Get("url")
-		if url == "" {
+		rawURL := r.URL.Query().Get("url")
+		if rawURL == "" {
 			log.Debug().Msg("URL parameter is required")
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]string{"error": "url parameter is required"})
 			return
 		}
 
+		normalizedURL, err := core.NormalizeURL(rawURL)
+		if err != nil {
+			log.Debug().
+				Str("url", rawURL).
+				Err(err).
+				Msg("failed to normalize url")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid url"})
+			return
+		}
+
 		log.Debug().
-			Str("url", url).
+			Str("url", normalizedURL).
 			Msg("Like Count Request Received")
 
 		// Look up URL
-		urlRecord, err := is.UrlLookupByUrl(context.Background(), url)
+		urlRecord, err := is.UrlLookupByUrl(context.Background(), normalizedURL)
 		if err != nil {
 			log.Debug().
-				Str("url", url).
+				Str("url", normalizedURL).
 				Err(err).
 				Msg("URL not found")
 			w.WriteHeader(http.StatusNotFound)
@@ -163,13 +187,13 @@ func LikeCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 		likeCount, err := is.LikeCountLookup(context.Background(), urlRecord.ID)
 		if err != nil {
 			log.Debug().
-				Str("url", url).
+				Str("url", normalizedURL).
 				Int64("url_id", urlRecord.ID).
 				Err(err).
 				Msg("Like count not found")
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(LikeCountResponse{
-				URL:   url,
+				URL:   normalizedURL,
 				Count: 0,
 			})
 			return
@@ -177,7 +201,7 @@ func LikeCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(LikeCountResponse{
-			URL:   url,
+			URL:   normalizedURL,
 			Count: likeCount.Count,
 		})
 	}

@@ -173,7 +173,39 @@ type CORSServer struct {
 }
 
 func (s *CORSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "https://gosuda.org")
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		// Echo origin and allow credentials for browsers
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		// Avoid caching responses for different origins incorrectly
+		w.Header().Add("Vary", "Origin")
+	} else {
+		// No Origin header: be permissive
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
+
+	// Handle preflight requests by reflecting requested methods/headers
+	if r.Method == http.MethodOptions {
+		// Prefer Access-Control-Request-Method if provided
+		if acrm := r.Header.Get("Access-Control-Request-Method"); acrm != "" {
+			w.Header().Set("Access-Control-Allow-Methods", acrm)
+		} else {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		}
+
+		// Prefer Access-Control-Request-Headers if provided
+		if acrh := r.Header.Get("Access-Control-Request-Headers"); acrh != "" {
+			w.Header().Set("Access-Control-Allow-Headers", acrh)
+		} else {
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		}
+
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Non-preflight responses: include some CORS headers
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	s.Handler.ServeHTTP(w, r)
