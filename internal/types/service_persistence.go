@@ -16,4 +16,12 @@ type PersistenceService interface {
 	ClientLookupByToken(ctx context.Context, token string) (ClientIdentifier, error)
 	ClientVerifyToken(ctx context.Context, clientID int64, token string) (bool, error)
 	ClientRegister(ctx context.Context, id int64, token string) error
+
+	// URL-related methods
+	UrlLookupByUrl(ctx context.Context, url string) (Url, error)
+	UrlInsert(ctx context.Context, id int64, url string, createdAt int64) error
+
+	// View-related methods
+	ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64, createdAt int64) error
+	ViewCountLookup(ctx context.Context, urlID int64) (ViewCount, error)
 }

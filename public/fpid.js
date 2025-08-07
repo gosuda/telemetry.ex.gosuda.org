@@ -158,35 +158,46 @@ const TELEMETRY_BASEURL = "https://telemetry.ex.gosuda.org";
 const CLIENT_VERSION = "20250807-V1ALPHA1";
 //@@END_CONFIG@@
 
+/**
+ * Checks if the client is already registered by verifying credentials with the telemetry server.
+ * Corresponds to POST /client/status API endpoint.
+ * @returns {Promise<boolean>} - True if the client is registered and valid, false otherwise.
+ */
 async function checkClientStatus() {
-    // check if client is registered
     let clientID = localStorage.getItem("telemetry_client_id");
     let clientToken = localStorage.getItem("telemetry_client_token");
 
     if (!clientID || !clientToken) {
-        return false
+        return false;
     }
 
-    const resp = await fetch(TELEMETRY_BASEURL + "/client/status", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            id: clientID,
-            token: clientToken,
-        }),
-    });
+    try {
+        const resp = await fetch(TELEMETRY_BASEURL + "/client/status", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                id: clientID,
+                token: clientToken,
+            }),
+        });
 
-    if (resp.status == 200) {
-        return true;
+        return resp.status === 200;
+    } catch (error) {
+        console.error("Error checking client status:", error);
+        return false;
     }
-
-    return false;
 }
 
+/**
+ * Registers a new client with the telemetry server.
+ * Corresponds to POST /client/register API endpoint.
+ * Stores the received client ID and token in local storage.
+ * @returns {Promise<Object>} - The client identity (id and token).
+ * @throws {Error} If registration fails.
+ */
 async function registerClient() {
-    // register client
     const resp = await fetch(TELEMETRY_BASEURL + "/client/register", {
         method: "POST",
         headers: {
@@ -194,7 +205,7 @@ async function registerClient() {
         },
     });
     if (resp.status !== 201) {
-        throw new Error("Failed to register client");
+        throw new Error(`Failed to register client: Status ${resp.status}`);
     }
 
     const clientIdentity = await resp.json();
@@ -204,11 +215,21 @@ async function registerClient() {
     return clientIdentity;
 }
 
+/**
+ * Registers the browser fingerprint with the telemetry server.
+ * Corresponds to POST /client/checkin API endpoint.
+ * Includes client credentials, version details, and user agent information.
+ * @param {string} fingerprint - The generated browser fingerprint hash.
+ * @throws {Error} If fingerprint registration fails.
+ */
 async function registerFingerprint(fingerprint) {
     let clientID = localStorage.getItem("telemetry_client_id");
     let clientToken = localStorage.getItem("telemetry_client_token");
 
-    // register fingerprint
+    if (!clientID || !clientToken) {
+        throw new Error("Client not registered. Cannot register fingerprint.");
+    }
+
     const resp = await fetch(TELEMETRY_BASEURL + "/client/checkin", {
         method: "POST",
         headers: {
@@ -225,28 +246,167 @@ async function registerFingerprint(fingerprint) {
         }),
     });
     if (resp.status !== 200) {
-        throw new Error("Failed to register fingerprint");
+        throw new Error(`Failed to register fingerprint: Status ${resp.status}`);
     }
 }
 
+/**
+ * Records a page view for the current URL
+ * @param {string} url - The URL to record a view for (defaults to current page URL)
+ * @returns {Promise<boolean>} - Returns true if view was recorded successfully
+ */
+async function recordView(url = window.location.href) {
+    let clientID = localStorage.getItem("telemetry_client_id");
+    let clientToken = localStorage.getItem("telemetry_client_token");
+
+    if (!clientID || !clientToken) {
+        console.warn("Client not registered. Cannot record view.");
+        return false;
+    }
+
+    try {
+        const resp = await fetch(TELEMETRY_BASEURL + "/client/view", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                client_id: clientID,
+                client_token: clientToken,
+                url: url,
+            }),
+        });
+
+        if (resp.status === 200) {
+            console.log("View recorded successfully for:", url);
+            return true;
+        } else {
+            console.error("Failed to record view. Status:", resp.status);
+            return false;
+        }
+    } catch (error) {
+        console.error("Error recording view:", error);
+        return false;
+    }
+}
+
+/**
+ * Gets the view count for a specific URL
+ * @param {string} url - The URL to get view count for (defaults to current page URL)
+ * @returns {Promise<Object|null>} - Returns view count data or null if failed
+ */
+async function getViewCount(url = window.location.href) {
+    try {
+        const resp = await fetch(TELEMETRY_BASEURL + "/view/count?" + new URLSearchParams({
+            url: url
+        }), {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+
+        if (resp.status === 200) {
+            const data = await resp.json();
+            console.log("View count for", url + ":", data.count);
+            return data;
+        } else if (resp.status === 404) {
+            console.log("URL not found, view count is 0 for:", url);
+            return { url: url, count: 0 };
+        } else {
+            console.error("Failed to get view count. Status:", resp.status);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error getting view count:", error);
+        return null;
+    }
+}
+
+/**
+ * Records a view and optionally returns the updated view count
+ * @param {string} url - The URL to record a view for (defaults to current page URL)
+ * @param {boolean} returnCount - Whether to return the updated view count
+ * @returns {Promise<Object|boolean>} - Returns view count data if returnCount is true, otherwise boolean success
+ */
+async function recordViewAndGetCount(url = window.location.href, returnCount = true) {
+    const viewRecorded = await recordView(url);
+    
+    if (!viewRecorded) {
+        return returnCount ? null : false;
+    }
+
+    if (returnCount) {
+        // Wait a bit for the database to be updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return await getViewCount(url);
+    }
+
+    return true;
+}
+
+/**
+ * Main telemetry function to ensure client registration, fingerprint check-in, and page view recording.
+ * Handles initial client registration if needed and updates fingerprint if changed.
+ */
 async function telemetry() {
-    // check if client is registered
     let clientFingerprint = localStorage.getItem("telemetry_client_fingerprint");
 
+    // Ensure the client is registered. If not, register it.
     if (!await checkClientStatus()) {
-        await registerClient();
-
-        const ok = await checkClientStatus();
-        if (!ok) {
-            throw new Error("Failed to register client");
+        try {
+            await registerClient();
+            // Re-check status after registration to confirm
+            const ok = await checkClientStatus();
+            if (!ok) {
+                throw new Error("Client registration confirmed failed after attempt.");
+            }
+        } catch (error) {
+            console.error("Initial client registration process failed:", error);
+            // Depending on desired behavior, might stop telemetry here or try again later
+            return;
         }
     }
 
+    // Generate current fingerprint and check if it has changed since last visit.
     const fp = await FPID.generate();
-    console.log("fpid:", fp.finalHash);
+    console.log("Generated Fingerprint Hash:", fp.finalHash);
+
     if (fp.finalHash !== clientFingerprint) {
-        await registerFingerprint(fp.finalHash);
+        try {
+            await registerFingerprint(fp.finalHash);
+            localStorage.setItem("telemetry_client_fingerprint", fp.finalHash);
+            console.log("New fingerprint registered and stored.");
+        } catch (error) {
+            console.error("Failed to register new fingerprint:", error);
+        }
+    } else {
+        console.log("Fingerprint is unchanged.");
+    }
+
+    // Record a view for the current page after client and fingerprint are handled.
+    try {
+        await recordView();
+    } catch (error) {
+        console.error("Failed to record page view:", error);
     }
 }
 
-telemetry();
+/**
+ * Initialize telemetry and automatically record page views
+ */
+async function initTelemetry() {
+    try {
+        await telemetry();
+    } catch (error) {
+        console.error("Telemetry initialization failed:", error);
+    }
+}
+
+// Auto-initialize when the script loads
+initTelemetry();
+
+// Make functions available globally for manual use
+window.recordView = recordView;
+window.getViewCount = getViewCount;
+window.recordViewAndGetCount = recordViewAndGetCount;

@@ -18,6 +18,10 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	s.Handle("POST", "/client/status", ClientStatusHandler(is))
 	s.Handle("POST", "/client/register", ClientRegisterHandler(is))
 	s.Handle("POST", "/client/checkin", ClientCheckinHandler(is))
+	s.Handle("POST", "/client/view", ClientViewHandler(is))
+
+	// view count lookup route
+	s.Handle("GET", "/view/count", ViewCountHandler(is))
 
 	s.GlobalOPTIONS = CORSHandler()
 }

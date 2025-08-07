@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"telemetry.ex.gosuda.org/telemetry/internal/persistence/database"
@@ -53,4 +54,65 @@ func (g *PersistenceClient) ClientRegisterFingerprint(
 		Fphash:        fphash,
 		CreatedAt:     time.Now().UnixNano(),
 	})
+}
+
+func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64, createdAt int64) error {
+	// Start a transaction
+	tx, err := g.pool.BeginTx(ctx, &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Create a new queries instance using the transaction
+	txQueries := database.New(tx)
+
+	// Insert the view
+	err = txQueries.ViewInsert(ctx, database.ViewInsertParams{
+		ID:        id,
+		UrlID:     urlID,
+		ClientID:  clientID,
+		CreatedAt: createdAt,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Try to update the view count, if it doesn't exist, insert a new one
+	err = txQueries.ViewCountUpdate(ctx, database.ViewCountUpdateParams{
+		UpdatedAt: createdAt,
+		UrlID:     urlID,
+	})
+	if err != nil {
+		// If update failed, try to insert a new view count
+		err = txQueries.ViewCountInsert(ctx, database.ViewCountInsertParams{
+			ID:        countID,
+			UrlID:     urlID,
+			UpdatedAt: createdAt,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	// Commit the transaction
+	return tx.Commit()
+}
+
+func (g *PersistenceClient) UrlLookupByUrl(ctx context.Context, url string) (types.Url, error) {
+	return g.db.UrlLookupByUrl(ctx, url)
+}
+
+func (g *PersistenceClient) UrlInsert(ctx context.Context, id int64, url string, createdAt int64) error {
+	return g.db.UrlInsert(ctx, database.UrlInsertParams{
+		ID:        id,
+		Url:       url,
+		CreatedAt: createdAt,
+	})
+}
+
+func (g *PersistenceClient) ViewCountLookup(ctx context.Context, urlID int64) (types.ViewCount, error) {
+	return g.db.ViewCountLookup(ctx, urlID)
 }
