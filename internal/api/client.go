@@ -11,9 +11,10 @@ import (
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
 
+// ClientIdentity represents a registered client's credentials
 type ClientIdentity struct {
-	ID    string `json:"id"`
-	Token string `json:"token"`
+	ID    string `json:"id"`    // Client's unique identifier
+	Token string `json:"token"` // Authentication token for the client
 }
 
 // POST /client/register
@@ -23,20 +24,20 @@ func ClientRegisterHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		clientID, err := is.GenerateID()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to generate client ID")
+			log.Error().Err(err).Msg("failed to generate client ID")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		token, err := is.GenerateIDString()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to generate client token")
+			log.Error().Err(err).Msg("failed to generate client token")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		err = is.ClientRegister(context.Background(), clientID, token)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to register client")
+			log.Error().Err(err).Msg("failed to register client")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -64,7 +65,7 @@ func ClientStatusHandler(is types.InternalServiceProvider) httprouter.Handle {
 		clientIdentity := ClientPassport{}
 		err := json.NewDecoder(r.Body).Decode(&clientIdentity)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to decode client passport")
+			log.Error().Err(err).Msg("failed to decode client passport")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -86,7 +87,7 @@ func ClientStatusHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		ok, err := is.ClientVerifyToken(context.Background(), clientID, clientIdentity.ClientToken)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to verify client token")
+			log.Error().Err(err).Msg("failed to verify client token")
 		}
 		log.Debug().
 			Bool("ok", ok).
@@ -94,22 +95,23 @@ func ClientStatusHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		if !ok {
 			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("{\"status\": \"unauthorized\"}"))
+			json.NewEncoder(w).Encode(map[string]string{"status": "unauthorized"})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{\"status\": \"ok\"}"))
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}
 }
 
+// ClientPassport contains client authentication and environment details
 type ClientPassport struct {
-	ClientID      string `json:"client_id"`
-	ClientToken   string `json:"client_token"`
-	ClientVersion string `json:"version"`
-	FPVersion     int    `json:"fpv"`
-	Fingerprint   string `json:"fp"`
-	UserAgent     string `json:"ua"`
-	UserAgentData string `json:"uad"`
+	ClientID      string `json:"client_id"`    // Unique client identifier
+	ClientToken   string `json:"client_token"` // Authentication token
+	ClientVersion string `json:"version"`      // Client software version
+	FPVersion     int    `json:"fpv"`          // Fingerprint version
+	Fingerprint   string `json:"fp"`           // Browser fingerprint hash
+	UserAgent     string `json:"ua"`           // Raw User-Agent string
+	UserAgentData string `json:"uad"`          // Structured User-Agent data (JSON)
 }
 
 // POST /client/checkin
@@ -121,7 +123,7 @@ func ClientCheckinHandler(is types.InternalServiceProvider) httprouter.Handle {
 		passport := ClientPassport{}
 		err := json.NewDecoder(r.Body).Decode(&passport)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to decode client passport")
+			log.Error().Err(err).Msg("failed to decode client passport")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -153,7 +155,7 @@ func ClientCheckinHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		ok, err := is.ClientVerifyToken(context.Background(), clientID, passport.ClientToken)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to verify client token")
+			log.Error().Err(err).Msg("failed to verify client token")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -168,7 +170,7 @@ func ClientCheckinHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		fpid, err := is.GenerateID()
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to generate fingerprint ID")
+			log.Error().Err(err).Msg("failed to generate fingerprint ID")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -176,12 +178,12 @@ func ClientCheckinHandler(is types.InternalServiceProvider) httprouter.Handle {
 		err = is.ClientRegisterFingerprint(
 			context.Background(), fpid, clientID, passport.UserAgent, passport.UserAgentData, int32(passport.FPVersion), passport.Fingerprint)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to register fingerprint")
+			log.Error().Err(err).Msg("failed to register fingerprint")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("{\"status\": \"ok\"}"))
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}
 }
