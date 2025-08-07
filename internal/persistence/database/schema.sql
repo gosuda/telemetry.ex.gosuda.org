@@ -30,6 +30,7 @@ CREATE TABLE likes
 ) ENGINE = InnoDB;
 
 CREATE INDEX likes_url_id_idx ON likes(url_id);
+CREATE UNIQUE INDEX likes_url_id_client_id_idx ON likes(url_id, client_id);
 
 CREATE TABLE like_counts
 (
