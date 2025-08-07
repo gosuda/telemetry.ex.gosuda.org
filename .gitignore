@@ -31,3 +31,5 @@ go.work.sum
 # .idea/
 # .vscode/
 migrate_db.sh
+telemetry_server.bin
+deploy.sh
