@@ -45,12 +45,12 @@ CREATE INDEX like_counts_url_id_idx ON like_counts(url_id);
 CREATE TABLE client_identifiers
 (
     id BIGINT PRIMARY KEY,
-    ident TEXT NOT NULL,
+    token TEXT NOT NULL,
 
     created_at BIGINT NOT NULL
 ) ENGINE = InnoDB;
 
-CREATE INDEX client_identifiers_ident_idx ON client_identifiers(ident);
+CREATE INDEX client_identifiers_token_idx ON client_identifiers(token);
 
 CREATE TABLE client_fingerprints
 (
@@ -58,6 +58,7 @@ CREATE TABLE client_fingerprints
     client_id BIGINT NOT NULL,
 
     user_agent TEXT NOT NULL,
+    user_agent_data TEXT NOT NULL,
     screen_width BIGINT NOT NULL,
     screen_height BIGINT NOT NULL,
     fpversion INT NOT NULL,

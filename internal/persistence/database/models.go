@@ -5,19 +5,20 @@
 package database
 
 type ClientFingerprint struct {
-	ID           int64  `json:"id"`
-	ClientID     int64  `json:"client_id"`
-	UserAgent    string `json:"user_agent"`
-	ScreenWidth  int64  `json:"screen_width"`
-	ScreenHeight int64  `json:"screen_height"`
-	Fpversion    int32  `json:"fpversion"`
-	Fphash       string `json:"fphash"`
-	CreatedAt    int64  `json:"created_at"`
+	ID            int64  `json:"id"`
+	ClientID      int64  `json:"client_id"`
+	UserAgent     string `json:"user_agent"`
+	UserAgentData string `json:"user_agent_data"`
+	ScreenWidth   int64  `json:"screen_width"`
+	ScreenHeight  int64  `json:"screen_height"`
+	Fpversion     int32  `json:"fpversion"`
+	Fphash        string `json:"fphash"`
+	CreatedAt     int64  `json:"created_at"`
 }
 
 type ClientIdentifier struct {
 	ID        int64  `json:"id"`
-	Ident     string `json:"ident"`
+	Token     string `json:"token"`
 	CreatedAt int64  `json:"created_at"`
 }
 
