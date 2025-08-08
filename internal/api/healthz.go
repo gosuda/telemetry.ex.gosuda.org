@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/zerolog/log"
 	"telemetry.ex.gosuda.org/telemetry/internal/core"
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
@@ -18,6 +19,7 @@ func HealthzHandler(is types.InternalServiceProvider) httprouter.Handle {
 
 		err := core.DoHealthCheck(is)
 		if err != nil {
+			log.Error().Err(err).Msg("health check failed")
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(_status_err)
 			return
