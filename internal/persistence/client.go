@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
 	"telemetry.ex.gosuda.org/telemetry/internal/persistence/database"
 	"telemetry.ex.gosuda.org/telemetry/internal/types"
 )
@@ -78,22 +79,45 @@ func (g *PersistenceClient) ViewInsertWithCount(ctx context.Context, id int64, u
 		CreatedAt: now,
 	})
 	if err != nil {
+		// If insert failed with duplicate entry (unlikely since no unique constraint), treat as no-op
+		if me, ok := err.(*mysql.MySQLError); ok && me.Number == 1062 {
+			return nil
+		}
 		return err
 	}
 
-	// Try to update the view count, if it doesn't exist, insert a new one
-	err = txQueries.ViewCountUpdate(ctx, database.ViewCountUpdateParams{
-		UpdatedAt: now,
-		UrlID:     urlID,
-	})
+	// Lookup view count row inside transaction. If none, insert; handle race by falling back to update on duplicate.
+	_, err = txQueries.ViewCountLookup(ctx, urlID)
 	if err != nil {
-		// If update failed, try to insert a new view count
-		err = txQueries.ViewCountInsert(ctx, database.ViewCountInsertParams{
-			ID:        countID,
-			UrlID:     urlID,
+		if err == sql.ErrNoRows {
+			// no count row; try to insert one
+			err = txQueries.ViewCountInsert(ctx, database.ViewCountInsertParams{
+				ID:        countID,
+				UrlID:     urlID,
+				UpdatedAt: now,
+			})
+			if err != nil {
+				// If insert failed because a concurrent tx inserted it, try update
+				if me, ok := err.(*mysql.MySQLError); ok && me.Number == 1062 {
+					if err = txQueries.ViewCountUpdate(ctx, database.ViewCountUpdateParams{
+						UpdatedAt: now,
+						UrlID:     urlID,
+					}); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	} else {
+		// count row exists -> update it
+		if err = txQueries.ViewCountUpdate(ctx, database.ViewCountUpdateParams{
 			UpdatedAt: now,
-		})
-		if err != nil {
+			UrlID:     urlID,
+		}); err != nil {
 			return err
 		}
 	}
@@ -140,22 +164,46 @@ func (g *PersistenceClient) LikeInsertWithCount(ctx context.Context, id int64, u
 		CreatedAt: now,
 	})
 	if err != nil {
+		// If this is a duplicate like (client already liked this URL), treat as idempotent no-op.
+		if me, ok := err.(*mysql.MySQLError); ok && me.Number == 1062 {
+			// Do not increment count when like already exists.
+			return nil
+		}
 		return err
 	}
 
-	// Try to update the like count, if it doesn't exist, insert a new one
-	err = txQueries.LikeCountUpdate(ctx, database.LikeCountUpdateParams{
-		UpdatedAt: now,
-		UrlID:     urlID,
-	})
+	// Lookup like count row inside transaction. If none, insert; handle race by falling back to update on duplicate.
+	_, err = txQueries.LikeCountLookup(ctx, urlID)
 	if err != nil {
-		// If update failed, try to insert a new like count
-		err = txQueries.LikeCountInsert(ctx, database.LikeCountInsertParams{
-			ID:        countID,
-			UrlID:     urlID,
+		if err == sql.ErrNoRows {
+			// no count row; try to insert one
+			err = txQueries.LikeCountInsert(ctx, database.LikeCountInsertParams{
+				ID:        countID,
+				UrlID:     urlID,
+				UpdatedAt: now,
+			})
+			if err != nil {
+				// If insert failed because a concurrent tx inserted it, try update
+				if me, ok := err.(*mysql.MySQLError); ok && me.Number == 1062 {
+					if err = txQueries.LikeCountUpdate(ctx, database.LikeCountUpdateParams{
+						UpdatedAt: now,
+						UrlID:     urlID,
+					}); err != nil {
+						return err
+					}
+				} else {
+					return err
+				}
+			}
+		} else {
+			return err
+		}
+	} else {
+		// count row exists -> update it
+		if err = txQueries.LikeCountUpdate(ctx, database.LikeCountUpdateParams{
 			UpdatedAt: now,
-		})
-		if err != nil {
+			UrlID:     urlID,
+		}); err != nil {
 			return err
 		}
 	}
