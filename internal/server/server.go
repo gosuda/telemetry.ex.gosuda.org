@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	_RANDFLAKE_RENEW_WINDOW = int64(time.Minute * 8)
+	_RANDFLAKE_RENEW_WINDOW = int64(time.Minute * 9)
 	_RANDFLAKE_SAFE_WINDOW  = int64(time.Second * 30)
 )
 
@@ -30,8 +30,9 @@ type Server struct {
 	ps     types.PersistenceService
 	stopCh chan struct{}
 
-	lease     *types.RandflakeLease
-	randflake *randflake.Generator
+	lease        *types.RandflakeLease
+	randflake    *randflake.Generator
+	randflakeKey []byte
 }
 
 var _ types.InternalServiceProvider = (*serverServiceProvider)(nil)
@@ -91,11 +92,12 @@ func NewServer(c *ServerConfig) (*Server, error) {
 	log.Debug().Int64("expires_at", g.lease.ExpiresAt).Int64("nodeid", g.lease.NodeID).Msg("randflake lease created")
 
 	randflakeSecretKey := sha256.Sum256([]byte(c.RandflakeSecret))
+	g.randflakeKey = randflakeSecretKey[:16]
 	rf, err := randflake.NewGenerator(
 		g.lease.NodeID,
 		g.lease.CreatedAt/int64(time.Second),
 		(g.lease.ExpiresAt-_RANDFLAKE_SAFE_WINDOW)/int64(time.Second),
-		randflakeSecretKey[:16],
+		g.randflakeKey,
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create randflake generator")
@@ -117,7 +119,7 @@ func NewServer(c *ServerConfig) (*Server, error) {
 }
 
 func (g *Server) randflakeWorker() {
-	ticker := time.NewTicker(time.Minute)
+	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
 
 	for {
@@ -133,7 +135,17 @@ func (g *Server) randflakeWorker() {
 					continue
 				}
 				g.lease = lease
-				g.randflake.UpdateLease(lease.CreatedAt, lease.ExpiresAt)
+				rf, err := randflake.NewGenerator(
+					g.lease.NodeID,
+					g.lease.CreatedAt/int64(time.Second),
+					(g.lease.ExpiresAt-_RANDFLAKE_SAFE_WINDOW)/int64(time.Second),
+					g.randflakeKey,
+				)
+				if err != nil {
+					log.Error().Err(err).Msg("failed to create randflake generator")
+					return
+				}
+				g.randflake = rf
 				log.Debug().Int64("expires_at", g.lease.ExpiresAt).Int64("nodeid", g.lease.NodeID).Msg("randflake lease created")
 			}
 
@@ -148,7 +160,7 @@ func (g *Server) randflakeWorker() {
 						return
 					}
 					g.lease = lease
-					g.randflake.UpdateLease(lease.CreatedAt, lease.ExpiresAt)
+					g.randflake.UpdateLease(lease.CreatedAt/int64(time.Second), lease.ExpiresAt/int64(time.Second))
 					log.Debug().Int64("expires_at", g.lease.ExpiresAt).Msg("randflake lease extended")
 				}()
 			}
