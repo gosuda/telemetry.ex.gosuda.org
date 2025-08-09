@@ -25,6 +25,7 @@ var _index_html = []byte(
 		<li>GET <code>/like/count?url=<url></code> - Get like count for a normalized URL (host + pathname)</li>
 		<li>POST <code>/client/view</code> - Submit a view (JSON: client_id, client_token, url)</li>
 		<li>GET <code>/view/count?url=<url></code> - Get view count for a normalized URL (host + pathname)</li>
+		<li>POST <code>/counts/bulk</code> - Bulk lookup counts for multiple URLs (JSON body: { "urls": ["https://...","..."] })</li>
 	</ul>
 	<p>Notes:</p>
 	<ul>
