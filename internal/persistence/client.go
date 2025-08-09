@@ -215,3 +215,21 @@ func (g *PersistenceClient) LikeInsertWithCount(ctx context.Context, id int64, u
 func (g *PersistenceClient) LikeCountLookup(ctx context.Context, urlID int64) (types.LikeCount, error) {
 	return g.db.LikeCountLookup(ctx, urlID)
 }
+
+// BulkCountsByUrls returns view and like counts for the provided normalized URLs.
+// It delegates to the generated SQL helper and maps the result into types.BulkCountEntry.
+func (g *PersistenceClient) BulkCountsByUrls(ctx context.Context, urls []string) ([]types.BulkCountEntry, error) {
+	rows, err := g.db.BulkCountsByUrls(ctx, urls)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]types.BulkCountEntry, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, types.BulkCountEntry{
+			URL:       r.Url,
+			ViewCount: r.ViewCount,
+			LikeCount: r.LikeCount,
+		})
+	}
+	return out, nil
+}

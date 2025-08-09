@@ -28,4 +28,7 @@ type PersistenceService interface {
 	// Like-related methods (mirrors view implementation; likes are read-heavy so no combined write+get helper on client)
 	LikeInsertWithCount(ctx context.Context, id int64, urlID int64, clientID int64, countID int64) error
 	LikeCountLookup(ctx context.Context, urlID int64) (LikeCount, error)
+
+	// Bulk counts: return view and like counts for a list of normalized URLs
+	BulkCountsByUrls(ctx context.Context, urls []string) ([]BulkCountEntry, error)
 }

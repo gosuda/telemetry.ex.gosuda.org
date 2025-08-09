@@ -21,6 +21,9 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	s.Handle("POST", "/client/view", ClientViewHandler(is))
 	s.Handle("POST", "/client/like", ClientLikeHandler(is))
 
+	// bulk counts endpoint (POST body: JSON { "urls": ["https://...","..."] })
+	s.Handle("POST", "/counts/bulk", BulkCountsHandler(is))
+
 	// view & like count lookup routes
 	s.Handle("GET", "/view/count", ViewCountHandler(is))
 	s.Handle("GET", "/like/count", LikeCountHandler(is))
