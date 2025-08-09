@@ -31,23 +31,27 @@ func BulkCountsHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 
 		// Normalize and deduplicate URLs while preserving first-seen order
-		normalized := make([]string, 0, len(req.Urls))
-		seen := make(map[string]struct{})
-		for _, u := range req.Urls {
-			n, err := core.NormalizeURL(u)
+		// Also store a mapping from normalized URL back to original URL
+		normalizedUrls := make([]string, 0, len(req.Urls))
+		originalToNormalizedMap := make(map[string]string) // normalized URL -> original URL
+		seenNormalized := make(map[string]struct{})
+
+		for _, originalUrl := range req.Urls {
+			n, err := core.NormalizeURL(originalUrl)
 			if err != nil {
-				log.Debug().Str("url", u).Err(err).Msg("failed to normalize url")
+				log.Debug().Str("url", originalUrl).Err(err).Msg("failed to normalize url")
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(map[string]string{"error": "invalid url in list"})
 				return
 			}
-			if _, ok := seen[n]; !ok {
-				seen[n] = struct{}{}
-				normalized = append(normalized, n)
+			if _, ok := seenNormalized[n]; !ok {
+				seenNormalized[n] = struct{}{}
+				normalizedUrls = append(normalizedUrls, n)
+				originalToNormalizedMap[n] = originalUrl
 			}
 		}
 
-		rows, err := is.BulkCountsByUrls(r.Context(), normalized)
+		rows, err := is.BulkCountsByUrls(r.Context(), normalizedUrls)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to query bulk counts")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -55,24 +59,40 @@ func BulkCountsHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 
 		// Build a map with default zero values so missing URLs return 0 counts
-		resultsMap := make(map[string]types.BulkCountEntry, len(normalized))
-		for _, u := range normalized {
-			resultsMap[u] = types.BulkCountEntry{
-				URL:       u,
+		resultsMap := make(map[string]types.BulkCountEntry, len(normalizedUrls))
+		for _, nUrl := range normalizedUrls {
+			resultsMap[nUrl] = types.BulkCountEntry{
+				URL:       originalToNormalizedMap[nUrl], // Use original URL for the response
 				ViewCount: 0,
 				LikeCount: 0,
 			}
 		}
 		for _, rr := range rows {
-			resultsMap[rr.URL] = rr
+			if originalUrl, ok := originalToNormalizedMap[rr.URL]; ok {
+				// Update with actual counts from DB, ensuring the original URL is retained
+				resultsMap[rr.URL] = types.BulkCountEntry{
+					URL:       originalUrl,
+					ViewCount: rr.ViewCount,
+					LikeCount: rr.LikeCount,
+				}
+			}
 		}
 
-		// Preserve normalized (first-seen) order in response
+		// Preserve original request order in response, using original URLs
 		resp := types.BulkCountsResponse{
-			Results: make([]types.BulkCountEntry, 0, len(normalized)),
+			Results: make([]types.BulkCountEntry, 0, len(req.Urls)),
 		}
-		for _, u := range normalized {
-			resp.Results = append(resp.Results, resultsMap[u])
+		// Iterate through the original request URLs to maintain order
+		for _, originalUrl := range req.Urls {
+			normalizedUrl, err := core.NormalizeURL(originalUrl)
+			if err != nil {
+				// This should ideally not happen again if it passed earlier validation
+				log.Debug().Str("url", originalUrl).Err(err).Msg("failed to re-normalize url for response building")
+				continue // Skip this URL if normalization fails here
+			}
+			if entry, ok := resultsMap[normalizedUrl]; ok {
+				resp.Results = append(resp.Results, entry)
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
