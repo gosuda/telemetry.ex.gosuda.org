@@ -220,6 +220,7 @@ func (s *CORSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Non-preflight responses: include some CORS headers
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Max-Age", "86400")
 	s.Handler.ServeHTTP(w, r)
 }
 
