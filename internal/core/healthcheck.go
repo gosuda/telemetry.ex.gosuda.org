@@ -3,7 +3,7 @@ package core
 import (
 	"context"
 
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 func DoHealthCheck(is types.InternalServiceProvider) error {

@@ -8,8 +8,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 	"gosuda.org/randflake"
-	"telemetry.ex.gosuda.org/telemetry/internal/core"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/core"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 // LikeRequest represents a like request with client credentials

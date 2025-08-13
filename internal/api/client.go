@@ -8,7 +8,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 	"gosuda.org/randflake"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 // ClientIdentity represents a registered client's credentials

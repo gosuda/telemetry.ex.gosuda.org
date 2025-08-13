@@ -11,8 +11,8 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
 	"gosuda.org/randflake"
-	"telemetry.ex.gosuda.org/telemetry/internal/api"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/api"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 const (

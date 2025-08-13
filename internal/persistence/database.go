@@ -6,8 +6,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"telemetry.ex.gosuda.org/telemetry/internal/persistence/database"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/persistence/database"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 type PersistenceClientConfig struct {

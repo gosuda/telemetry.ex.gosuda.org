@@ -2,13 +2,16 @@ package api
 
 import (
 	"github.com/julienschmidt/httprouter"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 // RegisterRoutes registers all API routes with the server and returns the server
 func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	// index
 	s.Handle("GET", "/", IndexHandler(is))
+
+	// go package
+	s.Handle("GET", "/telemetry", GoPackageHandler(is))
 
 	// z-routes
 	s.Handle("GET", "/healthz", HealthzHandler(is))

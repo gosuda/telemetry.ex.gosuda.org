@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"telemetry.ex.gosuda.org/telemetry/internal/persistence/database"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/persistence/database"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 const (

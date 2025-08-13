@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"telemetry.ex.gosuda.org/telemetry/internal/persistence/database"
+	"telemetry.gosuda.org/telemetry/internal/persistence/database"
 )
 
 var (

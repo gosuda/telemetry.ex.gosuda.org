@@ -5,8 +5,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/rs/zerolog/log"
-	"telemetry.ex.gosuda.org/telemetry/internal/core"
-	"telemetry.ex.gosuda.org/telemetry/internal/types"
+	"telemetry.gosuda.org/telemetry/internal/core"
+	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
 var _status_ok = []byte(`{"status":"ok"}`)

@@ -1,4 +1,4 @@
-module telemetry.ex.gosuda.org/telemetry
+module telemetry.gosuda.org/telemetry
 
 go 1.25rc2
 
