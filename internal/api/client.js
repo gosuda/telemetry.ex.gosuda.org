@@ -269,7 +269,7 @@ const FPID = (() => {
 //@@START_CONFIG@@
 const TELEMETRY_FP_VERSION = 1;
 const TELEMETRY_BASEURL = "https://telemetry.gosuda.org";
-const CLIENT_VERSION = "20250810-v1BETA1";
+const CLIENT_VERSION = "20250810-V1BETA1";
 //@@END_CONFIG@@
 
 /**
@@ -594,17 +594,30 @@ async function telemetry() {
  * Initialize telemetry and automatically record page views
  */
 async function initTelemetry() {
+    const runHydrations = () => {
+        try {
+            hydrateCounts();
+        } catch (e) { console.error("hydrateCounts failed:", e); }
+        try {
+            hydrateSummaryCounts();
+        } catch (e) { console.error("hydrateSummaryCounts failed:", e); }
+    };
+
+    // pre-hydrate
+    runHydrations();
+
+    // run telemetry
     try {
         await telemetry();
     } catch (error) {
         console.error("Telemetry initialization failed:", error);
     }
-    // Ensure hydrateCounts runs after telemetry (and its recordView calls) finish,
-    // and only once the DOM is ready.
+
+    // post-hydrate
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', hydrateCounts, { once: true });
+        document.addEventListener('DOMContentLoaded', runHydrations, { once: true });
     } else {
-        hydrateCounts();
+        runHydrations();
     }
 }
 
@@ -677,6 +690,60 @@ async function hydrateCounts() {
 
 
 /**
+ * Hydrate summary counts for index/list pages using bulk lookup. Uses data-summary-url,
+ * data-summary-view-count, and data-summary-like-count. Completely separate from per-page
+ * hydration logic.
+ */
+async function hydrateSummaryCounts() {
+    if (isCrawler()) return;
+    // Collect URLs from summary placeholders
+    const summaryEls = Array.from(document.querySelectorAll('[data-summary-url]'));
+    if (summaryEls.length === 0) return;
+    const urls = summaryEls
+        .map(el => el.getAttribute('data-summary-url'))
+        .filter(Boolean);
+    const uniqueUrls = [...new Set(urls)];
+    // Keep placeholders while fetching
+    for (const el of document.querySelectorAll('[data-summary-view-count]')) {
+        el.textContent = 'views ...';
+    }
+    for (const el of document.querySelectorAll('[data-summary-like-count]')) {
+        el.textContent = 'likes ...';
+    }
+    try {
+        const bulk = await getBulkCounts(uniqueUrls);
+        if (!bulk || !bulk.map) return;
+        const map = bulk.map;
+        // Update view placeholders
+        const viewEls = document.querySelectorAll('[data-summary-view-count]');
+        for (const el of viewEls) {
+            const url = el.getAttribute('data-summary-url');
+            if (!url) continue;
+            const entry = map[url];
+            const count = (entry && typeof entry.view_count !== 'undefined') ? entry.view_count : 0;
+            el.textContent = `views ${count}`;
+        }
+        // Update like placeholders
+        const likeEls = document.querySelectorAll('[data-summary-like-count]');
+        for (const el of likeEls) {
+            const url = el.getAttribute('data-summary-url');
+            if (!url) continue;
+            const entry = map[url];
+            const count = (entry && typeof entry.like_count !== 'undefined') ? entry.like_count : 0;
+            el.textContent = `likes ${count}`;
+        }
+    } catch (e) {
+        console.error("hydrateSummaryCounts failed:", e);
+        for (const el of document.querySelectorAll('[data-summary-view-count]')) {
+            el.textContent = 'views 0';
+        }
+        for (const el of document.querySelectorAll('[data-summary-like-count]')) {
+            el.textContent = 'likes 0';
+        }
+    }
+}
+
+/**
  * Performs a bulk counts lookup for multiple URLs.
  * POST /counts/bulk expects JSON body: { "urls": ["https://...", ...] }
  * Returns an object with the raw server response and a convenience map keyed by normalized URL:
@@ -690,7 +757,7 @@ async function getBulkCounts(urls = []) {
         console.warn("getBulkCounts: expected a non-empty array of urls");
         return { raw: { results: [] }, map: {} };
     }
-
+ 
     try {
         const resp = await fetch(TELEMETRY_BASEURL + "/counts/bulk", {
             method: "POST",
@@ -699,7 +766,7 @@ async function getBulkCounts(urls = []) {
             },
             body: JSON.stringify({ urls: urls }),
         });
-
+ 
         if (resp.status === 200) {
             const data = await resp.json();
             const map = {};
@@ -719,10 +786,11 @@ async function getBulkCounts(urls = []) {
     }
 }
 
-window.getBulkCounts = getBulkCounts;
 // Make functions available globally for manual use
 window.recordView = recordView;
 window.getViewCount = getViewCount;
 window.recordViewAndGetCount = recordViewAndGetCount;
 window.recordLike = recordLike;
 window.getLikeCount = getLikeCount;
+window.getBulkCounts = getBulkCounts;
+window.hydrateSummaryCounts = hydrateSummaryCounts;
