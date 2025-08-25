@@ -149,6 +149,7 @@ type ViewCountResponse struct {
 func ViewCountHandler(is types.InternalServiceProvider) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "max-age=5, stale-while-revalidate=86400, must-revalidate")
 
 		// Get URL parameter
 		rawURL := r.URL.Query().Get("url")

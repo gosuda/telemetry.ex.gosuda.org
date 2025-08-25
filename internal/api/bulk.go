@@ -14,6 +14,7 @@ import (
 func BulkCountsHandler(is types.InternalServiceProvider) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "max-age=5, stale-while-revalidate=86400, must-revalidate")
 		defer r.Body.Close()
 
 		var req types.BulkCountsRequest
