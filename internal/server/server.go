@@ -6,6 +6,9 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -184,7 +187,38 @@ type CORSServer struct {
 	http.Handler
 }
 
+var (
+	envOnce       sync.Once
+	_IP_HEADER    string
+	_HOST_HEADER  string
+	_PROTO_HEADER string
+)
+
 func (s *CORSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	envOnce.Do(func() {
+		_IP_HEADER = os.Getenv("IP_HEADER")
+		_HOST_HEADER = os.Getenv("HOST_HEADER")
+		_PROTO_HEADER = os.Getenv("PROTO_HEADER")
+	})
+
+	if _IP_HEADER != "" {
+		parts := strings.Split(r.Header.Get(_IP_HEADER), ", ")
+		parts = strings.Split(parts[len(parts)-1], ",")
+		r.RemoteAddr = strings.TrimSpace(parts[0])
+	}
+
+	if _HOST_HEADER != "" {
+		parts := strings.Split(r.Header.Get(_HOST_HEADER), ", ")
+		parts = strings.Split(parts[len(parts)-1], ",")
+		r.URL.Host = strings.TrimSpace(parts[0])
+	}
+
+	if _PROTO_HEADER != "" {
+		parts := strings.Split(r.Header.Get(_PROTO_HEADER), ", ")
+		parts = strings.Split(parts[len(parts)-1], ",")
+		r.URL.Scheme = strings.TrimSpace(parts[0])
+	}
+
 	origin := r.Header.Get("Origin")
 	if origin != "" {
 		// Echo origin and allow credentials for browsers

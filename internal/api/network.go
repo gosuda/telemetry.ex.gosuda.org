@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
-	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"telemetry.gosuda.org/telemetry/internal/types"
@@ -30,11 +28,6 @@ func GetzHandler(is types.InternalServiceProvider) httprouter.Handle {
 		}
 		for k := range r.Header {
 			response.Headers[k] = r.Header.Get(k)
-		}
-
-		if os.Getenv("IP_HEADER") != "" {
-			realip := strings.Split(r.Header.Get(os.Getenv("IP_HEADER")), ",")
-			response.Origin = strings.TrimSpace(realip[0])
 		}
 
 		jsonResponse, err := json.MarshalIndent(response, "", "  ")
