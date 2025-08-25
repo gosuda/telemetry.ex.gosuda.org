@@ -1,6 +1,8 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/julienschmidt/httprouter"
 	"telemetry.gosuda.org/telemetry/internal/types"
 )
@@ -15,7 +17,8 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 
 	// z-routes
 	s.Handle("GET", "/healthz", HealthzHandler(is))
-	s.Handle("GET", "/idz", IDZHandler(is))
+	s.Handle("GET", "/idz", IDzHandler(is))
+	s.Handle("GET", "/getz", GetzHandler(is))
 
 	// telemetry routes
 	s.Handle("POST", "/client/status", ClientStatusHandler(is))
@@ -30,6 +33,11 @@ func RegisterRoutes(s *httprouter.Router, is types.InternalServiceProvider) {
 	// view & like count lookup routes
 	s.Handle("GET", "/view/count", ViewCountHandler(is))
 	s.Handle("GET", "/like/count", LikeCountHandler(is))
+
+	// generate 204
+	s.Handle("GET", "/generate_204", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 
 	// Use the CORS middleware for global OPTIONS handling. The middleware will
 	// handle preflight requests even when next is nil.

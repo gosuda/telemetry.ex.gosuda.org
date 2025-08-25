@@ -7,7 +7,7 @@ import (
 	"telemetry.gosuda.org/telemetry/internal/types"
 )
 
-func IDZHandler(is types.InternalServiceProvider) httprouter.Handle {
+func IDzHandler(is types.InternalServiceProvider) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		w.Header().Set("Content-Type", "application/json")
 
